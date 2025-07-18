@@ -1,21 +1,21 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>Ficha de Temperatura dos Motoboys – DNACenter</title>
-  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
     import {
-      getFirestore, collection, addDoc, getDocs, doc, getDoc
+      getFirestore, collection, addDoc, getDocs, doc, setDoc, query, where
     } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBLO3Y5L5jlTKiBLyJwcV_RRfpDHFJcv4Y",
       authDomain: "dnacenter-b3161.firebaseapp.com",
       projectId: "dnacenter-b3161",
-      storageBucket: "dnacenter-b3161.firebasestorage.app",
+      storageBucket: "dnacenter-b3161.appspot.com",
       messagingSenderId: "20997708478",
       appId: "1:20997708478:web:468458bfc11725da829cef"
     };
@@ -23,202 +23,222 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    const motoboyInput = document.getElementById("nomeMotoboy");
-    const termoInput = document.getElementById("termometro");
-    const listaMotoboys = document.getElementById("listaMotoboys");
-    const filtroSelect = document.getElementById("filtroMotoboy");
-    const tabela = document.getElementById("tabelaRegistros");
+    document.addEventListener("DOMContentLoaded", async () => {
+      const tabelaMotoboys = document.getElementById("listaMotoboys");
+      const tabelaRegistros = document.getElementById("tabelaRegistros");
+      const filtroSelect = document.getElementById("filtroMotoboy");
+      let registros = [];
 
-    document.getElementById("btnCadastrar").addEventListener("click", async () => {
-      const nome = motoboyInput.value.trim();
-      const termo = termoInput.value.trim();
-      if (!nome || !termo) {
-        alert("Preencha todos os campos!");
-        return;
-      }
-
-      await addDoc(collection(db, "motoboys"), {
-        nome,
-        termometro: termo
-      });
-
-      motoboyInput.value = "";
-      termoInput.value = "";
-      carregarMotoboys();
-    });
-
-    async function carregarMotoboys() {
-      const snap = await getDocs(collection(db, "motoboys"));
-      listaMotoboys.innerHTML = "";
-      filtroSelect.innerHTML = '<option value="todos">Todos</option>';
-
-      snap.forEach(doc => {
-        const m = doc.data();
-        const nome = m.nome;
-        const termo = m.termometro;
-        const link = `${location.origin}/form.html?id=${encodeURIComponent(nome)}`;
-
-        const div = document.createElement("div");
-        div.className = "motoboy-card";
-        div.innerHTML = `
-          <strong>${nome}</strong><br>
-          Termômetro: ${termo}<br>
-          <small>Link: <a href="${link}" target="_blank">${link}</a></small><br>
-          <canvas id="qr-${nome}"></canvas>
-        `;
-        listaMotoboys.appendChild(div);
-        QRCode.toCanvas(document.getElementById("qr-" + nome), link);
-        filtroSelect.innerHTML += `<option value="${nome}">${nome}</option>`;
-      });
-    }
-
-    async function carregarRegistros() {
-      const snap = await getDocs(collection(db, "registros"));
-      const registros = [];
-      snap.forEach(doc => registros.push(doc.data()));
-      window._registros = registros;
-      exibirRegistros(registros);
-    }
-
-    function exibirRegistros(lista) {
-      tabela.innerHTML = "";
-      if (!lista.length) {
-        tabela.innerHTML = "<tr><td colspan='11'>Nenhum registro encontrado.</td></tr>";
-        return;
-      }
-
-      lista.forEach(r => {
-        const linha = document.createElement("tr");
-        const duracao = r.horaEnvio && r.horaReceb ? calcularDuracao(r.horaEnvio, r.horaReceb) : "";
-        linha.innerHTML = `
-          <td>${r.motoboy}</td>
-          <td>${r.data || ""}</td>
-          <td>${r.horaEnvio || ""}</td>
-          <td>${r.tempEnvio || ""}</td>
-          <td>${r.localEnvio || ""}</td>
-          <td>${r.respEnvio || ""}</td>
-          <td>${r.horaReceb || ""}</td>
-          <td>${r.tempReceb || ""}</td>
-          <td>${r.respReceb || ""}</td>
-          <td>${r.localReceb || ""}</td>
-          <td>${duracao}</td>
-        `;
-        tabela.appendChild(linha);
-      });
-    }
-
-    function calcularDuracao(h1, h2) {
-      const [a, b, c] = h1.split(":").map(Number);
-      const [x, y, z] = h2.split(":").map(Number);
-      const t1 = a * 3600 + b * 60 + c;
-      const t2 = x * 3600 + y * 60 + z;
-      return Math.round((t2 - t1) / 60);
-    }
-
-    document.getElementById("btnFiltrar").addEventListener("click", () => {
-      const inicio = document.getElementById("dataInicio").value;
-      const fim = document.getElementById("dataFim").value;
-      const nome = filtroSelect.value;
-
-      const resultado = window._registros.filter(r => {
-        const okData = (!inicio || r.data >= inicio) && (!fim || r.data <= fim);
-        const okNome = nome === "todos" || r.motoboy === nome;
-        return okData && okNome;
-      });
-
-      exibirRegistros(resultado);
-    });
-
-    document.getElementById("btnExportar").addEventListener("click", () => {
-      const porMotoboy = {};
-      window._registros.forEach(r => {
-        if (!porMotoboy[r.motoboy]) porMotoboy[r.motoboy] = [];
-        porMotoboy[r.motoboy].push({
-          Data: r.data,
-          "Hora Envio": r.horaEnvio,
-          "Temp. Envio": r.tempEnvio,
-          "Local Envio": r.localEnvio,
-          "Responsável Envio": r.respEnvio,
-          "Hora Recebimento": r.horaReceb,
-          "Temp. Recebida": r.tempReceb,
-          "Responsável Recebimento": r.respReceb,
-          "Local Recebido": r.localReceb,
-          "Duração (min)": r.horaEnvio && r.horaReceb ? calcularDuracao(r.horaEnvio, r.horaReceb) : ""
+      async function carregarMotoboys() {
+        const snap = await getDocs(collection(db, "motoboys"));
+        tabelaMotoboys.innerHTML = "";
+        snap.forEach(doc => {
+          const m = doc.data();
+          const url = `https://thalesalcantara.github.io/dnacenter/form.html?id=${doc.id}`;
+          tabelaMotoboys.innerHTML += `
+            <tr>
+              <td>${m.nome}</td>
+              <td>${m.termometro}</td>
+              <td><a href="${url}" target="_blank">Abrir QR</a></td>
+            </tr>
+          `;
         });
-      });
-
-      const wb = XLSX.utils.book_new();
-      for (let nome in porMotoboy) {
-        const ws = XLSX.utils.json_to_sheet(porMotoboy[nome]);
-        XLSX.utils.book_append_sheet(wb, ws, nome);
       }
-      XLSX.writeFile(wb, "Registros_Temperatura.xlsx");
-    });
 
-    window.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("btnCadastrar").onclick = async () => {
+        const nome = document.getElementById("nomeMotoboy").value.trim();
+        const termo = document.getElementById("termometro").value.trim();
+        if (!nome || !termo) {
+          alert("Preencha todos os campos.");
+          return;
+        }
+        const novo = await addDoc(collection(db, "motoboys"), { nome, termometro: termo });
+        alert("Motoboy cadastrado!");
+        carregarMotoboys();
+        document.getElementById("nomeMotoboy").value = "";
+        document.getElementById("termometro").value = "";
+      };
+
+      async function carregarRegistros() {
+        const snap = await getDocs(collection(db, "registros"));
+        registros = [];
+        const nomes = new Set();
+
+        snap.forEach(doc => {
+          const d = doc.data();
+          registros.push(d);
+          nomes.add(d.motoboy);
+        });
+
+        // Filtro dropdown
+        filtroSelect.innerHTML = '<option value="todos">Todos</option>';
+        [...nomes].forEach(n => {
+          filtroSelect.innerHTML += `<option value="${n}">${n}</option>`;
+        });
+
+        exibirRegistros(registros);
+      }
+
+      function exibirRegistros(lista) {
+        tabelaRegistros.innerHTML = "";
+        if (lista.length === 0) {
+          tabelaRegistros.innerHTML = "<tr><td colspan='11'>Nenhum registro encontrado.</td></tr>";
+          return;
+        }
+        lista.forEach(r => {
+          const duracao = r.horaEnvio && r.horaReceb ? calcularDuracao(r.horaEnvio, r.horaReceb) : "";
+          tabelaRegistros.innerHTML += `
+            <tr>
+              <td>${r.motoboy}</td>
+              <td>${r.data}</td>
+              <td>${r.horaEnvio}</td>
+              <td>${r.tempEnvio}</td>
+              <td>${r.localEnvio}</td>
+              <td>${r.respEnvio}</td>
+              <td>${r.horaReceb || ""}</td>
+              <td>${r.tempReceb || ""}</td>
+              <td>${r.respReceb || ""}</td>
+              <td>${r.localReceb || ""}</td>
+              <td>${duracao}</td>
+            </tr>
+          `;
+        });
+      }
+
+      function calcularDuracao(h1, h2) {
+        const [a1, b1] = h1.split(":");
+        const [a2, b2] = h2.split(":");
+        const t1 = parseInt(a1) * 60 + parseInt(b1);
+        const t2 = parseInt(a2) * 60 + parseInt(b2);
+        return (t2 - t1);
+      }
+
+      document.getElementById("btnFiltrar").onclick = () => {
+        const inicio = document.getElementById("dataInicio").value;
+        const fim = document.getElementById("dataFim").value;
+        const nome = filtroSelect.value;
+
+        const filtrados = registros.filter(r => {
+          const dentroData = (!inicio || r.data >= inicio) && (!fim || r.data <= fim);
+          const certoNome = nome === "todos" || r.motoboy === nome;
+          return dentroData && certoNome;
+        });
+
+        exibirRegistros(filtrados);
+      };
+
+      document.getElementById("btnExportar").onclick = () => {
+        const porMotoboy = {};
+        registros.forEach(r => {
+          if (!porMotoboy[r.motoboy]) porMotoboy[r.motoboy] = [];
+          porMotoboy[r.motoboy].push({
+            Data: r.data || "",
+            "Hora Envio": r.horaEnvio || "",
+            "Temp. Envio (°C)": r.tempEnvio || "",
+            "Local Envio": r.localEnvio || "",
+            "Responsável Envio": r.respEnvio || "",
+            "Hora Recebimento": r.horaReceb || "",
+            "Temp. Recebida (°C)": r.tempReceb || "",
+            "Responsável Recebimento": r.respReceb || "",
+            "Local Recebido": r.localReceb || "",
+            "Duração (min)": r.horaEnvio && r.horaReceb ? calcularDuracao(r.horaEnvio, r.horaReceb) : ""
+          });
+        });
+
+        const wb = XLSX.utils.book_new();
+        for (let nome in porMotoboy) {
+          const ws = XLSX.utils.json_to_sheet(porMotoboy[nome]);
+          XLSX.utils.book_append_sheet(wb, ws, nome);
+        }
+
+        XLSX.writeFile(wb, "Ficha_Temperatura.xlsx");
+      };
+
+      // Inicial
       carregarMotoboys();
       carregarRegistros();
     });
   </script>
   <style>
-    body { font-family: Arial; background: #f3f7fc; padding: 20px; }
-    h2 { color: royalblue; }
-    .box { background: #fff; padding: 20px; margin: 15px 0; border-radius: 10px; box-shadow: 0 0 5px #ccc; }
-    input, select { padding: 8px; margin: 5px; }
-    button { background: royalblue; color: white; padding: 8px 12px; border: none; cursor: pointer; margin-top: 10px; }
-    table { width: 100%; margin-top: 20px; border-collapse: collapse; }
-    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
-    th { background: #eee; }
-    .motoboy-card { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; border-radius: 5px; background: #fff; }
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #f2f2f2;
+    }
+    h2 {
+      text-align: center;
+      color: royalblue;
+    }
+    input, select, button {
+      margin: 5px;
+      padding: 8px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      text-align: center;
+      padding: 6px;
+    }
+    th {
+      background: #e0e0e0;
+    }
+    button {
+      background: royalblue;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
   <h2>Ficha de Temperatura dos Motoboys – DNACenter</h2>
 
-  <div class="box">
-    <h3>Cadastro de Motoboy</h3>
-    <input type="text" id="nomeMotoboy" placeholder="Nome do motoboy" />
-    <input type="text" id="termometro" placeholder="Nº do termômetro" />
-    <button id="btnCadastrar">Cadastrar</button>
-  </div>
+  <h3>Cadastro de Motoboy</h3>
+  <input id="nomeMotoboy" placeholder="Nome do motoboy" />
+  <input id="termometro" placeholder="Número do termômetro" />
+  <button id="btnCadastrar">Cadastrar</button>
 
-  <div class="box">
-    <h3>Motoboys Cadastrados</h3>
-    <div id="listaMotoboys"></div>
-  </div>
+  <h3>Motoboys Cadastrados</h3>
+  <table>
+    <thead>
+      <tr><th>Nome</th><th>Termômetro</th><th>QR Code</th></tr>
+    </thead>
+    <tbody id="listaMotoboys"></tbody>
+  </table>
 
-  <div class="box">
-    <h3>Filtros</h3>
-    <label>Data Início:</label><input type="date" id="dataInicio" />
-    <label>Data Fim:</label><input type="date" id="dataFim" />
-    <label>Motoboy:</label>
-    <select id="filtroMotoboy"><option value="todos">Todos</option></select>
-    <button id="btnFiltrar">Filtrar</button>
-    <button id="btnExportar">Exportar Excel</button>
-  </div>
+  <h3>Filtros</h3>
+  <label>Data Início: <input type="date" id="dataInicio" /></label>
+  <label>Data Fim: <input type="date" id="dataFim" /></label>
+  <label>Motoboy:
+    <select id="filtroMotoboy">
+      <option value="todos">Todos</option>
+    </select>
+  </label>
+  <button id="btnFiltrar">Filtrar</button>
+  <button id="btnExportar">Exportar Excel</button>
 
-  <div class="box">
-    <h3>Registros Filtrados</h3>
-    <table>
-      <thead>
-        <tr>
-          <th>Motoboy</th>
-          <th>Data</th>
-          <th>Hora Envio</th>
-          <th>Temp. Envio</th>
-          <th>Local Envio</th>
-          <th>Resp. Envio</th>
-          <th>Hora Receb.</th>
-          <th>Temp. Receb.</th>
-          <th>Resp. Receb.</th>
-          <th>Local Receb.</th>
-          <th>Duração (min)</th>
-        </tr>
-      </thead>
-      <tbody id="tabelaRegistros">
-        <tr><td colspan="11">Nenhum registro encontrado.</td></tr>
-      </tbody>
-    </table>
-  </div>
+  <h3>Registros Filtrados</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Motoboy</th>
+        <th>Data</th>
+        <th>Hora Envio</th>
+        <th>Temp. Envio (°C)</th>
+        <th>Local Envio</th>
+        <th>Responsável Envio</th>
+        <th>Hora Recebimento</th>
+        <th>Temp. Recebida (°C)</th>
+        <th>Responsável Recebimento</th>
+        <th>Local Recebido</th>
+        <th>Duração (min)</th>
+      </tr>
+    </thead>
+    <tbody id="tabelaRegistros"></tbody>
+  </table>
 </body>
 </html>
