@@ -2,16 +2,18 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Ficha de Temperatura - DNACenter</title>
   <style>
     body {
       font-family: Arial, sans-serif;
       background-color: #f3f7fc;
       padding: 20px;
+      margin: 0;
     }
     .box {
       background: white;
-      padding: 25px;
+      padding: 20px;
       border-radius: 10px;
       max-width: 500px;
       margin: auto;
@@ -24,35 +26,47 @@
     label {
       font-weight: bold;
       display: block;
-      margin-top: 10px;
+      margin-top: 12px;
     }
     input, select {
       width: 100%;
-      padding: 8px;
-      margin-top: 4px;
+      padding: 10px;
+      margin-top: 5px;
       margin-bottom: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 1em;
     }
     button {
       width: 100%;
-      padding: 10px;
+      padding: 12px;
       background-color: royalblue;
       color: white;
       border: none;
       font-weight: bold;
+      font-size: 1em;
+      border-radius: 5px;
       cursor: pointer;
-      margin-top: 10px;
     }
     .alerta {
       color: red;
       font-weight: bold;
       margin-top: 5px;
     }
+    #mensagemTemp {
+      margin-top: 10px;
+    }
+    img {
+      display: block;
+      margin: 0 auto 10px auto;
+      width: 130px;
+    }
   </style>
 </head>
 <body>
 
   <div class="box">
-    <img src="logo.png" alt="Logo DNACenter" style="width: 120px; display: block; margin: auto;" />
+    <img src="logo.png" alt="Logo DNACenter">
     <h2>Ficha de Temperatura</h2>
 
     <p><strong>Motoboy:</strong> <span id="motoboyNome"></span></p>
@@ -66,8 +80,8 @@
 
     <div id="formularioCampos"></div>
 
-    <button onclick="salvar()">Salvar Registro</button>
     <div id="mensagemTemp"></div>
+    <button onclick="salvar()">Salvar Registro</button>
   </div>
 
   <script>
@@ -99,7 +113,7 @@
       if (tipo === "Recebendo") {
         const pendentes = registros.filter(r => r.motoboy === motoboy && !r.horaReceb);
         if (pendentes.length === 0) {
-          campos.innerHTML = "<p>Não há envios pendentes para esse motoboy.</p>";
+          campos.innerHTML = "<p><em>Não há envios pendentes para esse motoboy.</em></p>";
           return;
         }
 
@@ -120,7 +134,7 @@
           <input type="number" id="tempReceb" oninput="verificarTemp(this.value)">
           <label>Local onde recebeu</label>
           <input type="text" id="localReceb" required>
-          <label>Quais locais está recebendo agora?</label>
+          <label>Marque os envios que está recebendo agora:</label>
           ${lista}
         `;
       }
@@ -155,7 +169,7 @@
       if (tipo === "Recebendo") {
         const marcados = [...document.querySelectorAll("input[name='recebidos']:checked")];
         if (marcados.length === 0) {
-          alert("Marque ao menos um envio que está recebendo agora.");
+          alert("⚠️ Marque ao menos um envio que está sendo recebido.");
           return;
         }
 
@@ -172,16 +186,15 @@
           registros[idx].respReceb = respReceb;
           registros[idx].localReceb = localReceb;
 
-          // Cálculo da duração
           const h1 = envio.horaEnvio.split(":").map(Number);
           const h2 = horaReceb.split(":").map(Number);
-          const minutos = ((h2[0] * 60 + h2[1]) - (h1[0] * 60 + h1[1]));
-          registros[idx].duracaoMin = minutos > 0 ? minutos : "";
+          const duracao = (h2[0]*60 + h2[1]) - (h1[0]*60 + h1[1]);
+          registros[idx].duracaoMin = duracao >= 0 ? duracao : "";
         });
       }
 
       localStorage.setItem("registros", JSON.stringify(registros));
-      alert("Registro salvo com sucesso!");
+      alert("✅ Registro salvo com sucesso!");
       window.location.reload();
     }
   </script>
