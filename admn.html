@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <title>Admin - Ficha de Temperatura DNACenter</title>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f2f2f2;
+      padding: 20px;
+    }
+    h2 {
+      color: royalblue;
+      text-align: center;
+    }
+    input, select, button {
+      padding: 8px;
+      margin: 5px;
+    }
+    button {
+      background-color: royalblue;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 6px;
+      text-align: center;
+    }
+    th {
+      background-color: #e0e0e0;
+    }
+    #listaMotoboys img {
+      width: 100px;
+      height: 100px;
+      margin-top: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h2>Ficha de Temperatura dos Motoboys – DNACenter</h2>
+
+  <h3>Cadastro de Motoboy</h3>
+  <input id="nomeMotoboy" placeholder="Nome do Motoboy" />
+  <input id="numeroTermometro" placeholder="Nº do Termômetro" />
+  <button onclick="cadastrarMotoboy()">Cadastrar</button>
+
+  <div id="listaMotoboys"></div>
+
+  <h3>Filtros</h3>
+  <label>Data Início: <input type="date" id="dataInicio" /></label>
+  <label>Data Fim: <input type="date" id="dataFim" /></label>
+  <label>Motoboy:
+    <select id="filtroMotoboy">
+      <option value="todos">Todos</option>
+    </select>
+  </label>
+  <button onclick="filtrarRegistros()">Filtrar</button>
+  <button onclick="exportarExcel()">Exportar Excel</button>
+
+  <h3>Registros Filtrados</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Motoboy</th>
+        <th>Data</th>
+        <th>Hora Envio</th>
+        <th>Temp. Envio (°C)</th>
+        <th>Local Envio</th>
+        <th>Responsável Envio</th>
+        <th>Hora Recebimento</th>
+        <th>Temp. Recebida (°C)</th>
+        <th>Responsável Recebimento</th>
+        <th>Local Recebido</th>
+        <th>Duração (min)</th>
+      </tr>
+    </thead>
+    <tbody id="tabelaRegistros">
+      <tr><td colspan="11">Nenhum registro encontrado.</td></tr>
+    </tbody>
+  </table>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBLO3Y5L5jlTKiBLyJwcV_RRfpDHFJcv4Y",
+      authDomain: "dnacenter-b3161.firebaseapp.com",
+      projectId: "dnacenter-b3161",
+      storageBucket: "dnacenter-b3161.appspot.com",
+      messagingSenderId: "20997708478",
+      appId: "1:20997708478:web:468458bfc11725da829cef"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    const filtroSelect = document.getElementById("filtroMotoboy");
+    let todosRegistros = [];
+
+    async function cadastrarMotoboy() {
+      const nome = document.getElementById("nomeMotoboy").value.trim();
+      const termo = document.getElementById("numeroTermometro").value.trim();
+      if (!nome || !termo) return alert("Preencha nome e número do termômetro.");
+      await db.collection("motoboys").add({ nome, termo });
+
+      const qr = new QRious({
+        value: `https://thalesalcantara.github.io/dnacenter/form.html?id=${encodeURIComponent(nome)}`,
+        size: 100
+      });
+
+      document.getElementById("listaMotoboys").innerHTML += `
+        <div><strong>${nome}</strong> (Termômetro: ${termo})<br>
+        <img src="${qr.toDataURL()}" /></div>
+      `;
+
+      carregarMotoboys();
+    }
+
+    async function carregarMotoboys() {
+      const snap = await db.collection("motoboys").get();
+      filtroSelect.innerHTML = `<option value="todos">Todos</option>`;
+      snap.forEach(doc => {
+        const { nome } = doc.data();
+        filtroSelect.innerHTML += `<option value="${nome}">${nome}</option>`;
+      });
+    }
+
+    async function carregarRegistros() {
+      const snap = await db.collection("registros").get();
+      todosRegistros = [];
+      snap.forEach(doc => todosRegistros.push(doc.data()));
+      mostrarRegistros(todosRegistros);
+    }
+
+    function mostrarRegistros(lista) {
+      const tbody = document.getElementById("tabelaRegistros");
+      tbody.innerHTML = "";
+
+      if (lista.length === 0) {
+        tbody.innerHTML = "<tr><td colspan='11'>Nenhum registro encontrado.</td></tr>";
+        return;
+      }
+
+      lista.forEach(r => {
+        const duracao = calcularDuracao(r.horaEnvio, r.horaReceb);
+        tbody.innerHTML += `
+          <tr>
+            <td>${r.motoboy || ""}</td>
+            <td>${r.data || ""}</td>
+            <td>${r.horaEnvio || ""}</td>
+            <td>${r.tempEnvio || ""}</td>
+            <td>${r.localEnvio || ""}</td>
+            <td>${r.respEnvio || ""}</td>
+            <td>${r.horaReceb || ""}</td>
+            <td>${r.tempReceb || ""}</td>
+            <td>${r.respReceb || ""}</td>
+            <td>${r.localReceb || ""}</td>
+            <td>${duracao}</td>
+          </tr>
+        `;
+      });
+    }
+
+    function calcularDuracao(h1, h2) {
+      if (!h1 || !h2) return "";
+      const [a1, b1, c1] = h1.split(":").map(Number);
+      const [a2, b2, c2] = h2.split(":").map(Number);
+      const t1 = a1 * 3600 + b1 * 60 + c1;
+      const t2 = a2 * 3600 + b2 * 60 + c2;
+      return Math.round((t2 - t1) / 60);
+    }
+
+    function filtrarRegistros() {
+      const inicio = document.getElementById("dataInicio").value;
+      const fim = document.getElementById("dataFim").value;
+      const nome = filtroSelect.value;
+      const filtrados = todosRegistros.filter(r => {
+        const okData = (!inicio || r.data >= inicio) && (!fim || r.data <= fim);
+        const okNome = nome === "todos" || r.motoboy === nome;
+        return okData && okNome;
+      });
+      mostrarRegistros(filtrados);
+    }
+
+    function exportarExcel() {
+      const porMotoboy = {};
+      todosRegistros.forEach(r => {
+        if (!porMotoboy[r.motoboy]) porMotoboy[r.motoboy] = [];
+        porMotoboy[r.motoboy].push({
+          Data: r.data,
+          "Hora Envio": r.horaEnvio,
+          "Temp. Envio": r.tempEnvio,
+          "Local Envio": r.localEnvio,
+          "Resp. Envio": r.respEnvio,
+          "Hora Recebimento": r.horaReceb,
+          "Temp. Recebida": r.tempReceb,
+          "Resp. Recebimento": r.respReceb,
+          "Local Recebido": r.localReceb,
+          "Duração (min)": calcularDuracao(r.horaEnvio, r.horaReceb)
+        });
+      });
+
+      const wb = XLSX.utils.book_new();
+      for (let nome in porMotoboy) {
+        const ws = XLSX.utils.json_to_sheet(porMotoboy[nome]);
+        XLSX.utils.book_append_sheet(wb, ws, nome);
+      }
+      XLSX.writeFile(wb, "registros_dnacenter.xlsx");
+    }
+
+    // Inicializar
+    carregarMotoboys();
+    carregarRegistros();
+  </script>
+</body>
+</html>

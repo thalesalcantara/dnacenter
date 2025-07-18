@@ -1,171 +1,175 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
-  <meta charset="UTF-8">
-  <title>Ficha de Temperatura - DNACenter</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-    import { getFirestore, collection, addDoc, Timestamp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyBLO3Y5L5jlTKiBLyJwcV_RRfpDHFJcv4Y",
-      authDomain: "dnacenter-b3161.firebaseapp.com",
-      projectId: "dnacenter-b3161",
-      storageBucket: "dnacenter-b3161.firebasestorage.app",
-      messagingSenderId: "20997708478",
-      appId: "1:20997708478:web:468458bfc11725da829cef"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-
-    window.addEventListener("DOMContentLoaded", () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const motoboy = urlParams.get("id");
-      if (!motoboy) {
-        alert("Acesso inválido. Escaneie o QR Code corretamente.");
-        document.body.innerHTML = "<h3>QR Code inválido.</h3>";
-        return;
-      }
-      document.getElementById("motoboyNome").innerText = motoboy;
-
-      document.getElementById("tipo").addEventListener("change", function () {
-        document.getElementById("formEnvio").style.display = this.value === "Envio" ? "block" : "none";
-        document.getElementById("formReceb").style.display = this.value === "Recebimento" ? "block" : "none";
-      });
-
-      document.getElementById("formulario").addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const tipo = document.getElementById("tipo").value;
-        const dataHora = new Date();
-        const registro = {
-          motoboy,
-          tipo,
-          timestamp: Timestamp.fromDate(dataHora),
-          data: dataHora.toISOString().split('T')[0],
-        };
-
-        if (tipo === "Envio") {
-          registro.horaEnvio = dataHora.toLocaleTimeString();
-          registro.tempEnvio = document.getElementById("tempEnvio").value;
-          registro.localEnvio = document.getElementById("localEnvio").value;
-          registro.respEnvio = document.getElementById("respEnvio").value;
-        } else {
-          registro.horaReceb = dataHora.toLocaleTimeString();
-          registro.tempReceb = document.getElementById("tempReceb").value;
-          registro.localReceb = document.getElementById("localReceb").value;
-          registro.respReceb = document.getElementById("respReceb").value;
-        }
-
-        try {
-          await addDoc(collection(db, "registros"), registro);
-          alert("✅ Registro salvo com sucesso!");
-          document.getElementById("formulario").reset();
-          document.getElementById("formEnvio").style.display = "none";
-          document.getElementById("formReceb").style.display = "none";
-        } catch (err) {
-          console.error(err);
-          alert("Erro ao salvar. Verifique a conexão.");
-        }
-      });
-
-      document.getElementById("tempEnvio").addEventListener("input", function () {
-        const aviso = document.getElementById("alertaTemp");
-        aviso.style.display = this.value > 15 ? "block" : "none";
-      });
-    });
-  </script>
-
+  <meta charset="UTF-8" />
+  <title>Formulário – Ficha de Temperatura</title>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: #f3f3f3;
-      margin: 0;
+      background: #f4f4f4;
       padding: 20px;
     }
-    h2, h3 {
-      text-align: center;
+    h2 {
       color: royalblue;
+      text-align: center;
     }
-    form {
-      background: white;
-      padding: 20px;
-      border-radius: 8px;
-      max-width: 600px;
-      margin: auto;
-      box-shadow: 0 0 10px #ccc;
-    }
-    label {
+    select, input, button {
       display: block;
-      margin-top: 10px;
-    }
-    input, select {
       width: 100%;
-      padding: 8px;
-      margin-top: 4px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
+      max-width: 400px;
+      margin: 10px auto;
+      padding: 10px;
     }
-    button {
-      background: royalblue;
-      color: white;
-      padding: 10px 20px;
-      border: none;
-      margin-top: 20px;
-      border-radius: 5px;
-      width: 100%;
-      font-size: 16px;
-    }
-    #alertaTemp {
+    .alerta {
       color: red;
       font-weight: bold;
-      margin-top: 10px;
-      display: none;
-    }
-    #motoboyNome {
-      font-weight: bold;
-      color: darkblue;
-    }
-    @media (max-width: 600px) {
-      form {
-        padding: 15px;
-      }
+      text-align: center;
     }
   </style>
 </head>
 <body>
-  <h2>Ficha de Temperatura - DNA Center</h2>
-  <h3>Motoboy: <span id="motoboyNome"></span></h3>
-
+  <h2>Ficha de Temperatura</h2>
   <form id="formulario">
-    <label for="tipo">Tipo de Registro:</label>
+    <input type="hidden" id="motoboy" />
+    <input type="hidden" id="termo" />
+
+    <label for="tipo">Tipo:</label>
     <select id="tipo" required>
-      <option value="">Selecione</option>
-      <option value="Envio">Envio</option>
-      <option value="Recebimento">Recebimento</option>
+      <option value="">Selecione...</option>
+      <option value="envio">Enviando</option>
+      <option value="recebimento">Recebendo</option>
     </select>
 
-    <div id="formEnvio" style="display:none;">
-      <label>Nome de quem enviou:</label>
-      <input type="text" id="respEnvio" required />
-      <label>Temperatura (°C):</label>
-      <input type="number" id="tempEnvio" step="0.1" required />
-      <div id="alertaTemp">⚠️ Temperatura acima do ideal. Verifique o gelo da caixa.</div>
-      <label>Local de Envio:</label>
-      <input type="text" id="localEnvio" required />
+    <div id="camposEnvio" style="display:none;">
+      <input type="text" id="respEnvio" placeholder="Responsável pelo Envio" />
+      <input type="text" id="tempEnvio" placeholder="Temperatura (°C)" />
+      <input type="text" id="localEnvio" placeholder="Unidade de Saída" />
+      <div class="alerta" id="alertaEnvio"></div>
     </div>
 
-    <div id="formReceb" style="display:none;">
-      <label>Nome de quem recebeu:</label>
-      <input type="text" id="respReceb" required />
-      <label>Temperatura (°C):</label>
-      <input type="number" id="tempReceb" step="0.1" required />
-      <label>Local de Recebimento:</label>
-      <input type="text" id="localReceb" required />
+    <div id="camposReceb" style="display:none;">
+      <input type="text" id="respReceb" placeholder="Responsável pelo Recebimento" />
+      <input type="text" id="tempReceb" placeholder="Temperatura (°C)" />
+      <input type="text" id="localReceb" placeholder="Unidade de Chegada" />
+      <div class="alerta" id="alertaReceb"></div>
     </div>
 
-    <button type="submit">Salvar Registro</button>
+    <button type="submit">Salvar</button>
   </form>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBLO3Y5L5jlTKiBLyJwcV_RRfpDHFJcv4Y",
+      authDomain: "dnacenter-b3161.firebaseapp.com",
+      projectId: "dnacenter-b3161",
+      storageBucket: "dnacenter-b3161.appspot.com",
+      messagingSenderId: "20997708478",
+      appId: "1:20997708478:web:468458bfc11725da829cef"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    const tipo = document.getElementById("tipo");
+    const camposEnvio = document.getElementById("camposEnvio");
+    const camposReceb = document.getElementById("camposReceb");
+    const alertaEnvio = document.getElementById("alertaEnvio");
+    const alertaReceb = document.getElementById("alertaReceb");
+
+    // Capturar motoboy pelo parâmetro ?id=
+    const url = new URLSearchParams(window.location.search);
+    const nomeMotoboy = url.get("id");
+    document.getElementById("motoboy").value = nomeMotoboy;
+
+    // Buscar número do termômetro
+    db.collection("motoboys").where("nome", "==", nomeMotoboy).get().then(snapshot => {
+      snapshot.forEach(doc => {
+        document.getElementById("termo").value = doc.data().termo;
+      });
+    });
+
+    tipo.addEventListener("change", () => {
+      camposEnvio.style.display = tipo.value === "envio" ? "block" : "none";
+      camposReceb.style.display = tipo.value === "recebimento" ? "block" : "none";
+    });
+
+    function horaAtual() {
+      const agora = new Date();
+      return agora.toLocaleTimeString('pt-BR', { hour12: false });
+    }
+
+    function dataAtual() {
+      const hoje = new Date();
+      return hoje.toISOString().split("T")[0];
+    }
+
+    function verificarTemperatura(valor, alertaElemento) {
+      const t = parseFloat(valor);
+      if (t > 15) {
+        alertaElemento.innerText = "Temperatura acima do ideal. Verifique o gelo da caixa. Caso já tenha trocado, desconsidere esta mensagem.";
+      } else {
+        alertaElemento.innerText = "";
+      }
+    }
+
+    document.getElementById("tempEnvio").addEventListener("input", e => {
+      verificarTemperatura(e.target.value, alertaEnvio);
+    });
+
+    document.getElementById("tempReceb").addEventListener("input", e => {
+      verificarTemperatura(e.target.value, alertaReceb);
+    });
+
+    document.getElementById("formulario").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const tipoValor = tipo.value;
+      const motoboy = document.getElementById("motoboy").value;
+      const termo = document.getElementById("termo").value;
+      const data = dataAtual();
+      const hora = horaAtual();
+
+      if (tipoValor === "envio") {
+        const doc = {
+          motoboy,
+          termo,
+          data,
+          horaEnvio: hora,
+          tempEnvio: document.getElementById("tempEnvio").value,
+          respEnvio: document.getElementById("respEnvio").value,
+          localEnvio: document.getElementById("localEnvio").value
+        };
+        await db.collection("registros").add(doc);
+        alert("Enviado com sucesso!");
+      }
+
+      if (tipoValor === "recebimento") {
+        // Buscar último registro incompleto
+        const snap = await db.collection("registros")
+          .where("motoboy", "==", motoboy)
+          .orderBy("data", "desc")
+          .limit(1)
+          .get();
+
+        if (!snap.empty) {
+          const docRef = snap.docs[0].ref;
+          await docRef.update({
+            horaReceb: hora,
+            tempReceb: document.getElementById("tempReceb").value,
+            respReceb: document.getElementById("respReceb").value,
+            localReceb: document.getElementById("localReceb").value
+          });
+          alert("Recebimento registrado!");
+        } else {
+          alert("Nenhum envio anterior encontrado.");
+        }
+      }
+
+      document.getElementById("formulario").reset();
+      camposEnvio.style.display = "none";
+      camposReceb.style.display = "none";
+    });
+  </script>
 </body>
 </html>
