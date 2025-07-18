@@ -88,11 +88,11 @@
           <label>Hora do Envio</label>
           <input type="text" id="horaEnvio" value="${agora}" readonly>
           <label>Responsável pelo Envio</label>
-          <input type="text" id="respEnvio">
+          <input type="text" id="respEnvio" required>
           <label>Temperatura (°C)</label>
           <input type="number" id="tempEnvio" oninput="verificarTemp(this.value)">
           <label>Local de Envio</label>
-          <input type="text" id="localEnvio">
+          <input type="text" id="localEnvio" required>
         `;
       }
 
@@ -115,11 +115,11 @@
           <label>Hora do Recebimento</label>
           <input type="text" id="horaReceb" value="${agora}" readonly>
           <label>Responsável pelo Recebimento</label>
-          <input type="text" id="respReceb">
+          <input type="text" id="respReceb" required>
           <label>Temperatura Recebida (°C)</label>
           <input type="number" id="tempReceb" oninput="verificarTemp(this.value)">
           <label>Local onde recebeu</label>
-          <input type="text" id="localReceb">
+          <input type="text" id="localReceb" required>
           <label>Quais locais está recebendo agora?</label>
           ${lista}
         `;

@@ -138,7 +138,7 @@
       motoboys.forEach(m => {
         const div = document.createElement("div");
         div.className = "motoboy-card";
-        const link = `${window.location.origin}/form.html?id=${encodeURIComponent(m.nome)}`;
+        const link = `https://thalesalcantara.github.io/dnacenter/form.html?id=${encodeURIComponent(m.nome)}`;
         div.innerHTML = `
           <strong>${m.nome}</strong><br>
           Termômetro: ${m.termometro}<br>
@@ -155,7 +155,6 @@
       const inicio = document.getElementById("dataInicio").value;
       const fim = document.getElementById("dataFim").value;
       const motoboySelecionado = document.getElementById("filtroMotoboy").value;
-
       const tabela = document.getElementById("tabelaRegistros");
       tabela.innerHTML = "";
 
