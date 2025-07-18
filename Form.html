@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Ficha de Temperatura - DNACenter</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+    import { getFirestore, collection, addDoc, Timestamp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBLO3Y5L5jlTKiBLyJwcV_RRfpDHFJcv4Y",
+      authDomain: "dnacenter-b3161.firebaseapp.com",
+      projectId: "dnacenter-b3161",
+      storageBucket: "dnacenter-b3161.firebasestorage.app",
+      messagingSenderId: "20997708478",
+      appId: "1:20997708478:web:468458bfc11725da829cef"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    window.addEventListener("DOMContentLoaded", () => {
+      const params = new URLSearchParams(window.location.search);
+      const motoboy = params.get("id");
+
+      if (!motoboy) {
+        document.body.innerHTML = "<h3 style='color:red;text-align:center;'>⚠️ QR Code inválido. Acesso negado.</h3>";
+        return;
+      }
+
+      document.getElementById("motoboyNome").innerText = motoboy;
+
+      const tipoSelect = document.getElementById("tipo");
+      const envioSection = document.getElementById("formEnvio");
+      const recebSection = document.getElementById("formReceb");
+
+      tipoSelect.addEventListener("change", () => {
+        envioSection.style.display = tipoSelect.value === "Envio" ? "block" : "none";
+        recebSection.style.display = tipoSelect.value === "Recebimento" ? "block" : "none";
+      });
+
+      document.getElementById("formulario").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const tipo = tipoSelect.value;
+        const now = new Date();
+
+        const registro = {
+          motoboy,
+          tipo,
+          data: now.toISOString().split("T")[0],
+          timestamp: Timestamp.fromDate(now)
+        };
+
+        if (tipo === "Envio") {
+          registro.horaEnvio = now.toLocaleTimeString();
+          registro.tempEnvio = document.getElementById("tempEnvio").value;
+          registro.localEnvio = document.getElementById("localEnvio").value;
+          registro.respEnvio = document.getElementById("respEnvio").value;
+        } else {
+          registro.horaReceb = now.toLocaleTimeString();
+          registro.tempReceb = document.getElementById("tempReceb").value;
+          registro.localReceb = document.getElementById("localReceb").value;
+          registro.respReceb = document.getElementById("respReceb").value;
+        }
+
+        try {
+          await addDoc(collection(db, "registros"), registro);
+          alert("✅ Registro salvo com sucesso!");
+          document.getElementById("formulario").reset();
+          envioSection.style.display = "none";
+          recebSection.style.display = "none";
+        } catch (error) {
+          alert("Erro ao salvar o registro.");
+          console.error(error);
+        }
+      });
+
+      // Alerta de temperatura (envio e recebimento)
+      document.getElementById("tempEnvio").addEventListener("input", function () {
+        document.getElementById("alertaTempEnvio").style.display = parseFloat(this.value) > 15 ? "block" : "none";
+      });
+
+      document.getElementById("tempReceb").addEventListener("input", function () {
+        document.getElementById("alertaTempReceb").style.display = parseFloat(this.value) > 15 ? "block" : "none";
+      });
+    });
+  </script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f0f0;
+      margin: 0;
+      padding: 20px;
+    }
+    h2, h3 {
+      text-align: center;
+      color: royalblue;
+    }
+    form {
+      background: white;
+      max-width: 600px;
+      margin: auto;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px #ccc;
+    }
+    label {
+      display: block;
+      margin-top: 10px;
+    }
+    input, select {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+    button {
+      margin-top: 20px;
+      width: 100%;
+      padding: 12px;
+      background: royalblue;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+    }
+    .alerta {
+      color: red;
+      font-weight: bold;
+      display: none;
+      margin-top: 5px;
+    }
+    @media (max-width: 600px) {
+      body {
+        padding: 10px;
+      }
+      form {
+        padding: 15px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h2>Ficha de Temperatura - DNA Center</h2>
+  <h3>Motoboy: <span id="motoboyNome"></span></h3>
+
+  <form id="formulario">
+    <label for="tipo">Tipo:</label>
+    <select id="tipo" required>
+      <option value="">Selecione</option>
+      <option value="Envio">Envio</option>
+      <option value="Recebimento">Recebimento</option>
+    </select>
+
+    <div id="formEnvio" style="display:none;">
+      <label>Responsável pelo envio:</label>
+      <input type="text" id="respEnvio" required />
+      <label>Temperatura (°C):</label>
+      <input type="number" id="tempEnvio" step="0.1" required />
+      <div id="alertaTempEnvio" class="alerta">⚠️ Temperatura acima do ideal. Verifique o gelo da caixa.</div>
+      <label>Local de envio:</label>
+      <input type="text" id="localEnvio" required />
+    </div>
+
+    <div id="formReceb" style="display:none;">
+      <label>Responsável pelo recebimento:</label>
+      <input type="text" id="respReceb" required />
+      <label>Temperatura (°C):</label>
+      <input type="number" id="tempReceb" step="0.1" required />
+      <div id="alertaTempReceb" class="alerta">⚠️ Temperatura acima do ideal. Verifique o gelo da caixa.</div>
+      <label>Local de recebimento:</label>
+      <input type="text" id="localReceb" required />
+    </div>
+
+    <button type="submit">Salvar Registro</button>
+  </form>
+</body>
+</html>
